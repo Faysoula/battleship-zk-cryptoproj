@@ -1,0 +1,10 @@
+[package]
+name = "battleship-methods"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+battleship-core = { path = "../../core" }
+risc0-zkvm = { version = "2.3", default-features = false, features = ["std"] }

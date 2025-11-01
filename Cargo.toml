@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = ["core", "guests", "host"]
+
+[workspace.dependencies]
+battleship-core = { path = "core" }
+
+# Use latest stable RISC Zero (2.3.x)
+risc0-build = "2.3"
+risc0-zkvm = { version = "2.3", default-features = false }
+
+# Common dependencies
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+anyhow = "1.0"
+rand = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+debug = 1
+lto = "thin"
+
+[profile.dev]
+opt-level = 1

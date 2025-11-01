@@ -1,0 +1,17 @@
+[package]
+name = "battleship-host"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "battleship"
+path = "src/main.rs"
+
+[dependencies]
+battleship-core = { workspace = true, features = ["rand"] }
+battleship-guests = { path = "../guests" }
+risc0-zkvm = { workspace = true, features = ["prove"] }
+anyhow = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+tracing-subscriber = { workspace = true }
