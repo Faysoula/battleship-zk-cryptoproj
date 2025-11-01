@@ -1,4 +1,4 @@
-use battleship_core::{Direction, GameState, HitType, Position, Ship, ShipClass, BOARD_SIZE};
+use battleship_core::{GameState, HitType, Position, ShipClass, BOARD_SIZE};
 use std::collections::HashSet;
 
 pub struct BoardDisplay {

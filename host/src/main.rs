@@ -1,65 +1,90 @@
 mod board_display;
+mod game_coordinator;
+mod network;
+mod network_protocol;
 mod ship_placement;
 
 use battleship_core::GameState;
 use battleship_guests::{INIT_ELF, INIT_ID};
+use game_coordinator::GameCoordinator;
+use network::NetworkConnection;
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use board_display::BoardDisplay;
-use ship_placement::interactive_ship_placement;
+use std::io::{self, Write};
 
 fn main() -> anyhow::Result<()> {
-    // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
 
     println!("\n╔═══════════════════════════════════════════════╗");
-    println!("║   ZERO-KNOWLEDGE BATTLESHIP - RISC Zero      ║");
-    println!("║   Cryptographic Proof-Based Gameplay         ║");
+    println!("║   ZERO-KNOWLEDGE BATTLESHIP - Multiplayer     ║");
+    println!("║   Network Play with Cryptographic Proofs      ║");
     println!("╚═══════════════════════════════════════════════╝\n");
 
-    // Phase 1: Ship Placement
-    println!("📍 PHASE 1: Place Your Ships");
-    let state = interactive_ship_placement()?;
+    // Choose mode
+    println!("Choose mode:");
+    println!("  1. Host a game (wait for opponent)");
+    println!("  2. Join a game (connect to opponent)");
+    print!("\nEnter choice (1/2): ");
+    io::stdout().flush()?;
 
-    // Phase 2: Generate ZK Proof of Valid Board
-    println!("\n PHASE 2: Generating Zero-Knowledge Proof...");
-    println!("   This proves your board is valid WITHOUT revealing positions!");
-    
-    let commitment = prove_board_initialization(&state)?;
-    
-    println!("\nZero-Knowledge Proof Generated!");
-    println!("   Board Commitment: {:?}", commitment);
-    println!("\n   Your opponent can verify your board is legal");
-    println!("   WITHOUT learning where your ships are!\n");
+    let mut choice = String::new();
+    io::stdin().read_line(&mut choice)?;
 
-    // Display the final board
-    let display = BoardDisplay::new();
-    display.display_own_board(&state);
+    let (network, starts_first) = match choice.trim() {
+        "1" => {
+            let network = NetworkConnection::host(7878)?;
+            (network, true) // Host goes first
+        }
+        "2" => {
+            print!("Enter opponent's IP address: ");
+            io::stdout().flush()?;
+            let mut ip = String::new();
+            io::stdin().read_line(&mut ip)?;
+            
+            let network = NetworkConnection::connect(ip.trim(), 7878)?;
+            (network, false) // Client goes second
+        }
+        _ => anyhow::bail!("Invalid choice"),
+    };
 
-    println!("\n✓ Single-player board setup complete!");
-    println!("  Next: Implement multiplayer gameplay with ZK proofs\n");
+    // Get player name
+    print!("\nEnter your name: ");
+    io::stdout().flush()?;
+    let mut player_name = String::new();
+    io::stdin().read_line(&mut player_name)?;
+    let player_name = player_name.trim().to_string();
 
+    // Ship placement
+    println!("\n📍 SHIP PLACEMENT");
+    let state = ship_placement::interactive_ship_placement()?;
+
+    // Generate ZK proof
+    println!("\n🔐 Generating board commitment proof...");
+    let commitment = prove_board_init(&state)?;
+    println!("✅ Your Board Commitment: {:?}", commitment);
+
+    // Start game
+    let mut coordinator = GameCoordinator::new(
+        state,
+        commitment,
+        network,
+        player_name,
+        starts_first,
+    );
+
+    coordinator.handshake()?;
+    coordinator.play_game()?;
+
+    println!("\n🎮 Game Over! Thanks for playing!\n");
     Ok(())
 }
 
-/// Generate a zero-knowledge proof that the board setup is valid
-fn prove_board_initialization(state: &GameState) -> anyhow::Result<risc0_zkvm::sha::Digest> {
-    println!("   Building execution environment...");
-    let env = ExecutorEnv::builder()
-        .write(state)?
-        .build()?;
-
-    println!("   Running ZK prover (this may take a moment in dev mode)...");
+fn prove_board_init(state: &GameState) -> anyhow::Result<risc0_zkvm::sha::Digest> {
+    let env = ExecutorEnv::builder().write(state)?.build()?;
     let prover = default_prover();
     let prove_info = prover.prove(env, INIT_ELF)?;
-
-    println!("   Verifying proof...");
     prove_info.receipt.verify(INIT_ID)?;
-
-    let commitment: risc0_zkvm::sha::Digest = prove_info.receipt.journal.decode()?;
-    
-    println!("   ✓ Proof verified successfully!");
-
+    let commitment = prove_info.receipt.journal.decode()?;
     Ok(commitment)
 }
