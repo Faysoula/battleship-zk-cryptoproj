@@ -1,0 +1,4 @@
+# Mark guest binaries as binary files
+target/**/init binary
+target/**/round binary
+target/**/methods.rs linguist-generated=true
