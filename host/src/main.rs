@@ -12,6 +12,12 @@ use risc0_zkvm::{default_prover, ExecutorEnv};
 use std::io::{self, Write};
 
 fn main() -> anyhow::Result<()> {
+
+    println!("🔍 DEBUG - Method IDs:");
+    println!("   INIT_ID: {}", hex::encode(battleship_guests::INIT_ID));
+    println!("   ROUND_ID: {}", hex::encode(battleship_guests::ROUND_ID));
+    println!();
+
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
