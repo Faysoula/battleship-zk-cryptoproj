@@ -6,6 +6,8 @@ use battleship_guests::{ROUND_ELF, ROUND_ID};
 use risc0_zkvm::{default_prover, sha::Digest, ExecutorEnv};
 use std::io::{self, Write};
 
+//git is working
+
 pub struct GameCoordinator {
     my_state: GameState,
     my_commitment: Digest,
