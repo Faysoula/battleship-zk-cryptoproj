@@ -32,17 +32,17 @@ impl BoardDisplay {
 
     /// Display your own board (shows ships)
     pub fn display_own_board(&self, state: &GameState) {
-        println!("\n╔═══════════════════════════════════════╗");
-        println!("║        YOUR BOARD (Ships Visible)     ║");
-        println!("╠═══════════════════════════════════════╣");
+        println!("\n╔══════════════════════════════════════╗");
+        println!("║       YOUR BOARD (Ships Visible)     ║");
+        println!("╠══════════════════════════════════════╣");
         
         // Header
         print!("║   ");
         for x in 0..BOARD_SIZE {
             print!(" {} ", x);
         }
-        println!(" ║");
-        println!("║  ┌────────────────────────────────┐ ║");
+        println!("     ║");
+        println!("║   ┌──────────────────────────────┐   ║");
 
         // Board rows
         for y in 0..BOARD_SIZE {
@@ -52,11 +52,11 @@ impl BoardDisplay {
                 let symbol = self.get_own_board_symbol(pos, state);
                 print!(" {} ", symbol);
             }
-            println!("│ ║");
+            println!("│   ║");
         }
 
-        println!("║  └────────────────────────────────┘ ║");
-        println!("╚═══════════════════════════════════════╝");
+        println!("║   └──────────────────────────────┘   ║");
+        println!("╚══════════════════════════════════════╝");
         
         // Legend
         println!("\n  Legend: [A]=Carrier [B]=Battleship [C]=Cruiser [S]=Sub [D]=Destroyer");
@@ -65,17 +65,17 @@ impl BoardDisplay {
 
     /// Display opponent's board (ships hidden, only shows hits/misses)
     pub fn display_opponent_board(&self) {
-        println!("\n╔═══════════════════════════════════════╗");
-        println!("║    OPPONENT BOARD (Ships Hidden)      ║");
-        println!("╠═══════════════════════════════════════╣");
+        println!("\n╔══════════════════════════════════════╗");
+        println!("║    OPPONENT BOARD (Ships Hidden)     ║");
+        println!("╠══════════════════════════════════════╣");
         
         // Header
         print!("║   ");
         for x in 0..BOARD_SIZE {
             print!(" {} ", x);
         }
-        println!(" ║");
-        println!("║  ┌────────────────────────────────┐ ║");
+        println!("     ║");
+        println!("║   ┌──────────────────────────────┐   ║");
 
         // Board rows
         for y in 0..BOARD_SIZE {
@@ -91,11 +91,11 @@ impl BoardDisplay {
                 };
                 print!(" {} ", symbol);
             }
-            println!("│ ║");
+            println!("│   ║");
         }
 
-        println!("║  └────────────────────────────────┘ ║");
-        println!("╚═══════════════════════════════════════╝");
+        println!("║   └──────────────────────────────┘   ║");
+        println!("╚══════════════════════════════════════╝");
         
         // Ships sunk
         if !self.sunk_ships.is_empty() {

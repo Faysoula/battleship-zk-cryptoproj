@@ -4,7 +4,7 @@ use std::io::{self, Write};
 pub fn interactive_ship_placement() -> anyhow::Result<GameState> {
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║       SHIP PLACEMENT - Zero-Knowledge         ║");
-    println!("║  Your board will be cryptographically        ║");
+    println!("║  Your board will be cryptographically         ║");
     println!("║  committed using RISC Zero proofs!            ║");
     println!("╚═══════════════════════════════════════════════╝\n");
 
@@ -97,11 +97,11 @@ fn display_board(state: &GameState) {
     for x in 0..BOARD_SIZE {
         print!(" {} ", x);
     }
-    println!("│");
+    println!(" │");
     println!("  ├────────────────────────────────┤");
 
     for y in 0..BOARD_SIZE {
-        print!("{} │", y);
+        print!("{} │ ", y);
         for x in 0..BOARD_SIZE {
             let pos = Position::new(x as u32, y as u32);
             let mut found = false;
@@ -125,7 +125,7 @@ fn display_board(state: &GameState) {
                 print!(" ~ ");
             }
         }
-        println!("│");
+        println!(" │");
     }
 
     println!("  └────────────────────────────────┘");
