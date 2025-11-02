@@ -41,17 +41,14 @@ impl GameCoordinator {
         }
     }
 
-    /// Exchange initial board commitments
     pub fn handshake(&mut self) -> anyhow::Result<()> {
         println!("\n🤝 Exchanging board commitments...");
         
-        // Send our commitment
         self.network.send(&GameMessage::BoardReady {
             commitment: self.my_commitment,
             player_name: self.player_name.clone(),
         })?;
         
-        // Receive opponent's commitment
         match self.network.receive()? {
             GameMessage::BoardReady { commitment, player_name } => {
                 self.opponent_commitment = commitment;
@@ -66,153 +63,198 @@ impl GameCoordinator {
         Ok(())
     }
 
-    /// Main game loop
-   pub fn play_game(&mut self) -> anyhow::Result<()> {
-    loop {
-        self.display_boards();
-        
-        if self.is_my_turn {
-            // My turn: keep shooting until I miss
-            loop {
-                let hit_result = self.take_turn()?;
+    pub fn play_game(&mut self) -> anyhow::Result<()> {
+        loop {
+            if self.is_my_turn {
                 
-                // Check if I won
-                if self.opponent_display.ships_remaining() == 0 {
-                    println!("\n🎉 YOU WIN! All opponent ships destroyed!");
-                    self.network.send(&GameMessage::GameOver {
-                        winner: self.player_name.clone(),
-                    })?;
-                    return Ok(());
+                // ✅ Show both boards ONLY at start of your turn
+                self.display_boards();
+
+                loop {
+                    let hit_result = self.take_turn()?;
+
+                    // ✅ After each shot, show ONLY opponent board
+                    self.display_opponent_board_after_shot(&hit_result);
+
+                    if self.opponent_display.ships_remaining() == 0 {
+                        println!("\n*** YOU WIN! All opponent ships destroyed! ***");
+                        self.network.send(&GameMessage::GameOver {
+                            winner: self.player_name.clone(),
+                        })?;
+                        return Ok(());
+                    }
+
+                    match hit_result {
+                        HitType::Miss => {
+                            println!("\nYou missed! Turn passes to opponent.\n");
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            break;
+                        }
+                        HitType::Hit => {
+                            println!("\nHIT! You get another shot!\n");
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            // ✅ Keep looping WITHOUT refreshing both boards
+                        }
+                        HitType::Sunk(_) => {
+                            println!("\nSHIP SUNK! You get another shot!\n");
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                        }
+                    }
                 }
-                
-                // If miss, switch turns
-                match hit_result {
-                    HitType::Miss => {
-                        println!("\n⚠️  You missed! Turn passes to opponent.\n");
-                        break;
+            } else {
+                // ✅ Opponent turn still shows both boards normally
+                loop {
+                    self.display_boards();
+                    
+                    let hit_result = self.respond_to_shot()?;
+
+                    self.display_boards_after_opponent_shot(&hit_result);
+
+                    if self.my_display.ships_remaining() == 0 {
+                        println!("\n*** YOU LOSE! All your ships destroyed! ***");
+                        return Ok(());
                     }
-                    HitType::Hit => {
-                        println!("\n🔥 HIT! You get another shot!\n");
-                        std::thread::sleep(std::time::Duration::from_secs(1));
-                    }
-                    HitType::Sunk(_) => {
-                        println!("\n💥 SHIP SUNK! You get another shot!\n");
-                        std::thread::sleep(std::time::Duration::from_secs(1));
+
+                    match hit_result {
+                        HitType::Miss => {
+                            println!("\nOpponent missed! Your turn!\n");
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            break;
+                        }
+                        HitType::Hit => {
+                            println!("\nOpponent hit! They shoot again...\n");
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                        }
+                        HitType::Sunk(_) => {
+                            println!("\nOpponent sunk a ship! They shoot again...\n");
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                        }
                     }
                 }
             }
-        } else {
-            // Opponent's turn: they keep shooting until they miss
-            loop {
-                let hit_result = self.respond_to_shot()?;
-                
-                // Check if they won
-                if self.my_display.ships_remaining() == 0 {
-                    println!("\n💔 YOU LOSE! All your ships destroyed!");
-                    return Ok(());
-                }
-                
-                // If they missed, switch turns
-                match hit_result {
-                    HitType::Miss => {
-                        println!("\n✅ Opponent missed! Your turn!\n");
-                        break;
-                    }
-                    HitType::Hit => {
-                        println!("\n⚠️  Opponent hit! They shoot again...\n");
-                        std::thread::sleep(std::time::Duration::from_secs(1));
-                    }
-                    HitType::Sunk(_) => {
-                        println!("\n💔 Opponent sunk a ship! They shoot again...\n");
-                        std::thread::sleep(std::time::Duration::from_secs(1));
-                    }
-                }
-            }
+            
+            self.is_my_turn = !self.is_my_turn;
         }
-        
-        self.is_my_turn = !self.is_my_turn;
     }
-}
+
+    fn display_boards(&self) {
+        print!("\x1B[2J\x1B[1;1H");
+        
+        println!("\n");
+        println!("╔═══════════════════════════════════════════════╗");
+        println!("║  {} vs {}                    ", self.player_name, self.opponent_name);
+        println!("║  Your Ships: {} | Opponent Ships: {}         ", 
+                 self.my_display.ships_remaining(),
+                 self.opponent_display.ships_remaining());
+        if self.is_my_turn {
+            println!("║  >>> YOUR TURN <<<                            ║");
+        } else {
+            println!("║  >>> OPPONENT'S TURN <<<                      ║");
+        }
+        println!("╚═══════════════════════════════════════════════╝");
+        
+        self.opponent_display.display_opponent_board();
+        self.my_display.display_own_board(&self.my_state);
+    }
+
+    fn display_opponent_board_after_shot(&self, hit_type: &HitType) {
+        print!("\x1B[2J\x1B[1;1H");
+        
+        println!("\n");
+        println!("╔═══════════════════════════════════════════════╗");
+        println!("║  SHOT RESULT                                  ║");
+        match hit_type {
+            HitType::Miss => println!("║  MISS!                                        ║"),
+            HitType::Hit => println!("║  HIT!                                         ║"),
+            HitType::Sunk(ship) => println!("║  SUNK {:?}!                              ║", ship),
+        }
+        println!("╚═══════════════════════════════════════════════╝");
+        
+        println!("\nOPPONENT'S BOARD (Updated):");
+        self.opponent_display.display_opponent_board();
+
+        // ✅ NO self-board here — this was the bug
+    }
+
+    fn display_boards_after_opponent_shot(&self, hit_type: &HitType) {
+        print!("\x1B[2J\x1B[1;1H");
+        
+        println!("\n");
+        println!("╔═══════════════════════════════════════════════╗");
+        println!("║  OPPONENT'S SHOT RESULT                       ║");
+        match hit_type {
+            HitType::Miss => println!("║  They MISSED!                                 ║"),
+            HitType::Hit => println!("║  They HIT your ship!                          ║"),
+            HitType::Sunk(ship) => println!("║  They SUNK your {:?}!                    ║", ship),
+        }
+        println!("╚═══════════════════════════════════════════════╝");
+        
+        println!("\nOPPONENT'S BOARD:");
+        self.opponent_display.display_opponent_board();
+        
+        println!("\nYOUR BOARD (Updated with damage):");
+        self.my_display.display_own_board(&self.my_state);
+    }
 
     fn take_turn(&mut self) -> anyhow::Result<HitType> {
-    println!("\n╔═══════════════════════════════════════╗");
-    println!("║           YOUR TURN                   ║");
-    println!("╚═══════════════════════════════════════╝");
-    
-    let shot = self.prompt_shot()?;
-    
-    println!("\n🎯 Firing at {}...", shot);
-    self.network.send(&GameMessage::TakeShot { position: shot })?;
-    
-    println!("⏳ Waiting for ZK proof from opponent...");
-    match self.network.receive()? {
-        GameMessage::ShotResult { position, hit_type, proof } => {
-            println!("🔐 Received ZK proof, verifying...");
-            
-            // Verify the proof
-            self.verify_shot_proof(position, &hit_type, &proof)?;
-            
-            // Record result
-            self.opponent_display.record_shot(position, hit_type.clone());
-            
-            // Display result
-            match &hit_type {
-                HitType::Miss => println!("💨 MISS!"),
-                HitType::Hit => println!("💥 HIT!"),
-                HitType::Sunk(ship) => println!("🎯 SUNK {:?}!", ship),
+        println!("\n╔═══════════════════════════════════════╗");
+        println!("║        TAKE YOUR SHOT                 ║");
+        println!("╚═══════════════════════════════════════╝");
+        
+        let shot = self.prompt_shot()?;
+        
+        println!("\nFiring at {}...", shot);
+        self.network.send(&GameMessage::TakeShot { position: shot })?;
+        
+        println!("⏳ Waiting for ZK proof from opponent...");
+        match self.network.receive()? {
+            GameMessage::ShotResult { position, hit_type, proof } => {
+                println!("🔐 Verifying ZK proof...");
+                
+                self.verify_shot_proof(position, &hit_type, &proof)?;
+                self.opponent_display.record_shot(position, hit_type.clone());
+                
+                println!("✅ Proof verified!");
+                
+                Ok(hit_type)
             }
-            
-            Ok(hit_type)
+            GameMessage::GameOver { winner } => {
+                println!("\n{} wins!", winner);
+                std::process::exit(0);
+            }
+            _ => anyhow::bail!("Unexpected message"),
         }
-        GameMessage::GameOver { winner } => {
-            println!("\n💔 {} wins!", winner);
-            std::process::exit(0);
-        }
-        _ => anyhow::bail!("Unexpected message"),
     }
-}
 
     fn respond_to_shot(&mut self) -> anyhow::Result<HitType> {
-    println!("\n╔═══════════════════════════════════════╗");
-    println!("║        OPPONENT'S TURN                ║");
-    println!("╚═══════════════════════════════════════╝");
-    
-    println!("⏳ Waiting for opponent's shot...");
-    
-    match self.network.receive()? {
-        GameMessage::TakeShot { position } => {
-            println!("🎯 Opponent shot at {}", position);
-            println!("🔐 Generating ZK proof of result...");
-            
-            // Generate proof
-            let (hit_type, proof) = self.generate_shot_proof(position)?;
-            
-            // Send result
-            self.network.send(&GameMessage::ShotResult {
-                position,
-                hit_type: hit_type.clone(),
-                proof,
-            })?;
-            
-            // Record on our board
-            self.my_display.record_shot(position, hit_type.clone());
-            
-            // Display result
-            match &hit_type {
-                HitType::Miss => println!("💨 They MISSED!"),
-                HitType::Hit => println!("💥 They HIT your ship!"),
-                HitType::Sunk(ship) => println!("🎯 They SUNK your {:?}!", ship),
+        println!("\nWaiting for opponent's shot...");
+        
+        match self.network.receive()? {
+            GameMessage::TakeShot { position } => {
+                println!("Opponent shot at {}", position);
+                println!("🔐 Generating ZK proof of result...");
+                
+                let (hit_type, proof) = self.generate_shot_proof(position)?;
+                
+                self.network.send(&GameMessage::ShotResult {
+                    position,
+                    hit_type: hit_type.clone(),
+                    proof,
+                })?;
+                
+                self.my_display.record_shot(position, hit_type.clone());
+                
+                println!("✅ Proof sent!");
+                
+                Ok(hit_type)
             }
-            
-            Ok(hit_type)
+            GameMessage::GameOver { winner } => {
+                println!("\n{} wins!", winner);
+                std::process::exit(0);
+            }
+            _ => anyhow::bail!("Unexpected message"),
         }
-        GameMessage::GameOver { winner } => {
-            println!("\n🎉 {} wins!", winner);
-            std::process::exit(0);
-        }
-        _ => anyhow::bail!("Unexpected message"),
     }
-}
 
     fn generate_shot_proof(&mut self, shot: Position) -> anyhow::Result<(HitType, ProofData)> {
         let input = RoundInput {
@@ -220,11 +262,12 @@ impl GameCoordinator {
             shot,
         };
         
-        let old_commit = self.my_state.commit();
+        let old_commit = self.my_commitment;
         let hit_type = self.my_state.apply_shot(shot);
         let new_commit = self.my_state.commit();
         
-        // Generate ZK proof
+        self.my_commitment = new_commit;
+        
         let env = ExecutorEnv::builder().write(&input)?.build()?;
         let prover = default_prover();
         let prove_info = prover.prove(env, ROUND_ELF)?;
@@ -242,20 +285,17 @@ impl GameCoordinator {
     }
 
     fn verify_shot_proof(
-        &self,
+        &mut self,
         position: Position,
         hit_type: &HitType,
         proof: &ProofData,
     ) -> anyhow::Result<()> {
         let receipt = proof.to_receipt()?;
         
-        // Verify the ZK proof
         receipt.verify(ROUND_ID)?;
         
-        // Decode and verify the commitment
         let commit: RoundCommit = receipt.journal.decode()?;
         
-        // Verify claims
         if commit.old_state != self.opponent_commitment {
             anyhow::bail!("Proof uses wrong state commitment!");
         }
@@ -266,8 +306,7 @@ impl GameCoordinator {
             anyhow::bail!("Proof hit type doesn't match!");
         }
         
-        // Update opponent commitment for next round
-        // (We'd need to make opponent_commitment mutable)
+        self.opponent_commitment = commit.new_state;
         
         println!("✅ ZK Proof verified! Result is cryptographically proven.");
         Ok(())
@@ -305,18 +344,5 @@ impl GameCoordinator {
             
             return Ok(Position::new(x, y));
         }
-    }
-
-    fn display_boards(&self) {
-        println!("\n");
-        println!("╔═══════════════════════════════════════════════╗");
-        println!("║  {} vs {}                    ", self.player_name, self.opponent_name);
-        println!("║  Your Ships: {} | Opponent Ships: {}         ", 
-                 self.my_display.ships_remaining(),
-                 self.opponent_display.ships_remaining());
-        println!("╚═══════════════════════════════════════════════╝");
-        
-        self.opponent_display.display_opponent_board();
-        self.my_display.display_own_board(&self.my_state);
     }
 }
