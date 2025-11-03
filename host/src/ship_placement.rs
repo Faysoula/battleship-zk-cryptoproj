@@ -4,10 +4,44 @@ use std::io::{self, Write};
 pub fn interactive_ship_placement() -> anyhow::Result<GameState> {
     println!("\n╔═══════════════════════════════════════════════╗");
     println!("║       SHIP PLACEMENT - Zero-Knowledge         ║");
-    println!("║  Your board will be cryptographically        ║");
+    println!("║  Your board will be cryptographically         ║");
     println!("║  committed using RISC Zero proofs!            ║");
     println!("╚═══════════════════════════════════════════════╝\n");
 
+    println!("Choose placement method:");
+    println!("  1. Manual placement (choose each ship position)");
+    println!("  2. Random placement (quick setup for testing)");
+    print!("\nEnter choice (1/2): ");
+    io::stdout().flush()?;
+
+    let mut choice = String::new();
+    io::stdin().read_line(&mut choice)?;
+
+    match choice.trim() {
+        "1" => manual_placement(),
+        "2" => random_placement(),
+        _ => {
+            println!("Invalid choice, using random placement");
+            random_placement()
+        }
+    }
+}
+
+fn random_placement() -> anyhow::Result<GameState> {
+    println!("\n🎲 Generating random ship placement...");
+    let state: GameState = rand::random();
+    
+    display_board(&state);
+    println!("\n✅ Ships randomly placed!");
+    println!("   Press Enter to continue...");
+    
+    let mut buffer = String::new();
+    io::stdin().read_line(&mut buffer)?;
+    
+    Ok(state)
+}
+
+fn manual_placement() -> anyhow::Result<GameState> {
     let mut state = GameState::new(rand::random());
 
     let ships_to_place = [
@@ -63,11 +97,11 @@ fn display_board(state: &GameState) {
     for x in 0..BOARD_SIZE {
         print!(" {} ", x);
     }
-    println!("│");
+    println!(" │");
     println!("  ├────────────────────────────────┤");
 
     for y in 0..BOARD_SIZE {
-        print!("{} │", y);
+        print!("{} │ ", y);
         for x in 0..BOARD_SIZE {
             let pos = Position::new(x as u32, y as u32);
             let mut found = false;
@@ -91,7 +125,7 @@ fn display_board(state: &GameState) {
                 print!(" ~ ");
             }
         }
-        println!("│");
+        println!(" │");
     }
 
     println!("  └────────────────────────────────┘");
