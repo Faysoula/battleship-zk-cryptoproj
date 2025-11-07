@@ -11,11 +11,11 @@ pub struct NetworkConnection {
 impl NetworkConnection {
     /// Host: Create a server and wait for connection
     pub fn host(port: u16) -> Result<Self> {
-        println!("🌐 Starting server on port {}...", port);
+        println!("Starting server on port {}...", port);
         let listener = TcpListener::bind(format!("0.0.0.0:{}", port))
             .context("Failed to bind to port")?;
         
-        println!("⏳ Waiting for opponent to connect...");
+        println!("   Waiting for opponent to connect...");
         println!("   Share this info with your opponent:");
         println!("   - Your IP address (use 'ip addr' or 'ipconfig')");
         println!("   - Port: {}", port);

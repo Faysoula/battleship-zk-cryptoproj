@@ -14,9 +14,10 @@ use bytemuck::cast_slice;
 
 fn main() -> anyhow::Result<()> {
 
-    println!("🔍 DEBUG - Method IDs:");
-    println!(" INIT_ID: {}", hex::encode(cast_slice(&battleship_guests::INIT_ID)));
-    println!(" ROUND_ID: {}", hex::encode(cast_slice(&battleship_guests::ROUND_ID)));
+    //this is just to check the ids before playing for testing remove later!!
+    // println!("Method IDs:");
+    // println!(" INIT_ID: {}", hex::encode(cast_slice(&battleship_guests::INIT_ID)));
+    // println!(" ROUND_ID: {}", hex::encode(cast_slice(&battleship_guests::ROUND_ID)));
 
 
     tracing_subscriber::fmt()
@@ -63,13 +64,13 @@ fn main() -> anyhow::Result<()> {
     let player_name = player_name.trim().to_string();
 
     // Ship placement
-    println!("\n📍 SHIP PLACEMENT");
+    println!("\nSHIP PLACEMENT");
     let state = ship_placement::interactive_ship_placement()?;
 
     // Generate ZK proof
-    println!("\n🔐 Generating board commitment proof...");
+    println!("\nGenerating board commitment proof...");
     let commitment = prove_board_init(&state)?;
-    println!("✅ Your Board Commitment: {:?}", commitment);
+    println!("Your Board Commitment: {:?}", commitment);
 
     // Start game
     let mut coordinator = GameCoordinator::new(
@@ -83,7 +84,7 @@ fn main() -> anyhow::Result<()> {
     coordinator.handshake()?;
     coordinator.play_game()?;
 
-    println!("\n🎮 Game Over! Thanks for playing!\n");
+    println!("\nGame Over! Thanks for playing!\n");
     Ok(())
 }
 

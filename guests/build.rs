@@ -8,7 +8,7 @@ fn main() {
         && env::var("FORCE_REBUILD_GUESTS").is_err();
 
     if use_prebuilt {
-        println!("cargo:warning=✅ Using pre-built guest binaries");
+        println!("cargo:warning=   Using pre-built guest binaries");
         println!("cargo:warning=   All players will have IDENTICAL Image IDs");
         
         // Get OUT_DIR where methods.rs will be placed
@@ -20,7 +20,7 @@ fn main() {
         fs::copy(prebuilt_methods, &dest_methods)
             .expect("Failed to copy prebuilt methods.rs");
         
-        // Copy binaries to OUT_DIR (same location as methods.rs)
+        // Copy binaries to OUT_DIR
         // so that include_bytes!("init.bin") can find them
         for bin in &["init.bin", "round.bin"] {
             let src = Path::new("../prebuilt").join(bin);
@@ -33,7 +33,7 @@ fn main() {
         println!("cargo:rerun-if-changed=../prebuilt/init.bin");
         println!("cargo:rerun-if-changed=../prebuilt/round.bin");
     } else {
-        println!("cargo:warning=🔨 Building from source");
+        println!("cargo:warning= Building from source");
         risc0_build::embed_methods();
     }
 }

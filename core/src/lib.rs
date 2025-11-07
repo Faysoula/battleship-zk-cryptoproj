@@ -26,6 +26,7 @@ pub enum ShipClass {
 }
 
 impl ShipClass {
+    /// Get the span (length) of the ship
     pub fn span(&self) -> u32 {
         match self {
             ShipClass::Carrier => 5,
@@ -36,6 +37,7 @@ impl ShipClass {
         }
     }
 
+    /// Get the sunk mask for the ship (e.g., for a span of 3, this is 0b000)
     pub fn sunk_mask(&self) -> u8 {
         (1u8 << self.span()) - 1
     }
@@ -62,6 +64,7 @@ impl Position {
         Self { x, y }
     }
 
+    /// Step in a direction by a certain distance
     pub fn step(self, dir: Direction, dist: u32) -> Self {
         match dir {
             Direction::Vertical => Self {
@@ -86,6 +89,7 @@ impl From<(u32, u32)> for Position {
     }
 }
 
+// Implement Display for Position
 impl Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
@@ -107,6 +111,7 @@ impl Direction {
     }
 }
 
+// Random distribution for Direction
 #[cfg(feature = "rand")]
 impl Distribution<Direction> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Direction {
@@ -127,7 +132,7 @@ pub struct Ship {
     pub class: ShipClass,
     pub pos: Position,
     pub dir: Direction,
-    pub hit_mask: u8,
+    pub hit_mask: u8, // Each bit represents whether that segment has been hit
 }
 
 impl Ship {
@@ -140,14 +145,17 @@ impl Ship {
         }
     }
 
+    // Create a new ship with a specified hit mask
     pub fn with_hit_mask(self, hit_mask: u8) -> Self {
         Self { hit_mask, ..self }
     }
 
+    // Get an iterator over all points occupied by the ship
     pub fn points(&self) -> impl Iterator<Item = Position> + '_ {
         (0..self.class.span()).map(|offset| self.pos.step(self.dir, offset))
     }
 
+    // Does this ship intersect with another ship?
     pub fn intersects(&self, other: &Self) -> bool {
         self.points().any(|p| other.points().any(|q| p == q))
     }
@@ -186,7 +194,7 @@ impl GameState {
     pub fn new(pepper: [u8; 16]) -> Self {
         Self {
             ships: Vec::new(),
-            pepper,
+            pepper, // random nonce to salt the state
         }
     }
 
@@ -238,6 +246,7 @@ impl GameState {
         true
     }
 
+    // Apply a shot to the game state, returning the HitType
     pub fn apply_shot(&mut self, shot: Position) -> HitType {
         for ship in &mut self.ships {
             let hit = ship.apply_shot(shot);
@@ -248,6 +257,7 @@ impl GameState {
         HitType::Miss
     }
 
+    // Compute the commitment digest of the game state THIS IS VERY IMPORTANT
     pub fn commit(&self) -> Digest {
         let bytes = bincode::serialize(self).expect("serialization should succeed");
         *risc0_zkvm::sha::Impl::hash_bytes(&bytes)

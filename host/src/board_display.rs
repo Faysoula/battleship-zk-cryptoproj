@@ -16,6 +16,7 @@ impl BoardDisplay {
         }
     }
 
+    // Record the result of a shot
     pub fn record_shot(&mut self, pos: Position, result: HitType) {
         self.shots.insert(pos);
         match result {

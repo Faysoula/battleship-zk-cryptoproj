@@ -10,7 +10,7 @@ pub fn interactive_ship_placement() -> anyhow::Result<GameState> {
 
     println!("Choose placement method:");
     println!("  1. Manual placement (choose each ship position)");
-    println!("  2. Random placement (quick setup for testing)");
+    println!("  2. Random placement (quick setup for testing or if youre lazy)");
     print!("\nEnter choice (1/2): ");
     io::stdout().flush()?;
 
@@ -28,11 +28,11 @@ pub fn interactive_ship_placement() -> anyhow::Result<GameState> {
 }
 
 fn random_placement() -> anyhow::Result<GameState> {
-    println!("\n🎲 Generating random ship placement...");
+    println!("\nGenerating random ship placement...");
     let state: GameState = rand::random();
     
     display_board(&state);
-    println!("\n✅ Ships randomly placed!");
+    println!("\nShips randomly placed!");
     println!("   Press Enter to continue...");
     
     let mut buffer = String::new();
@@ -77,7 +77,7 @@ fn manual_placement() -> anyhow::Result<GameState> {
                 println!("✓ {} placed successfully!", name);
                 break;
             } else {
-                println!("✗ Invalid placement! Ship overlaps or goes out of bounds.");
+                println!("  Invalid placement! Ship overlaps or goes out of bounds.");
                 println!("  Press Enter to try again...");
                 let mut buffer = String::new();
                 io::stdin().read_line(&mut buffer)?;
@@ -86,7 +86,7 @@ fn manual_placement() -> anyhow::Result<GameState> {
     }
 
     display_board(&state);
-    println!("\n✓ All ships placed! Board is ready for ZK commitment.\n");
+    println!("\n  All ships placed! Board is ready for ZK commitment.\n");
 
     Ok(state)
 }
@@ -142,14 +142,14 @@ fn prompt_position(prompt: &str) -> anyhow::Result<Option<Position>> {
     // Parse "x,y" format
     let parts: Vec<&str> = input.split(',').collect();
     if parts.len() != 2 {
-        println!("✗ Invalid format. Use: x,y (e.g., 3,5)");
+        println!("Invalid format. Use: x,y (e.g., 3,5)");
         return Ok(None);
     }
 
     let x: u32 = match parts[0].trim().parse() {
         Ok(v) if v < BOARD_SIZE as u32 => v,
         _ => {
-            println!("✗ X must be between 0 and {}", BOARD_SIZE - 1);
+            println!("X must be between 0 and {}", BOARD_SIZE - 1);
             return Ok(None);
         }
     };
@@ -157,7 +157,7 @@ fn prompt_position(prompt: &str) -> anyhow::Result<Option<Position>> {
     let y: u32 = match parts[1].trim().parse() {
         Ok(v) if v < BOARD_SIZE as u32 => v,
         _ => {
-            println!("✗ Y must be between 0 and {}", BOARD_SIZE - 1);
+            println!("Y must be between 0 and {}", BOARD_SIZE - 1);
             return Ok(None);
         }
     };
@@ -176,7 +176,7 @@ fn prompt_direction() -> anyhow::Result<Option<Direction>> {
         "h" | "horizontal" => Ok(Some(Direction::Horizontal)),
         "v" | "vertical" => Ok(Some(Direction::Vertical)),
         _ => {
-            println!("✗ Invalid direction. Use 'h' or 'v'");
+            println!("Invalid direction. Use 'h' or 'v'");
             Ok(None)
         }
     }

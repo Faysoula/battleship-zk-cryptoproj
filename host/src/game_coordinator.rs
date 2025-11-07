@@ -41,25 +41,27 @@ impl GameCoordinator {
         }
     }
 
+    // Perform the handshake to exchange board commitments
     pub fn handshake(&mut self) -> anyhow::Result<()> {
-        println!("\n🤝 Exchanging board commitments...");
+        println!("\n Exchanging board commitments...");
         
         self.network.send(&GameMessage::BoardReady {
             commitment: self.my_commitment,
             player_name: self.player_name.clone(),
         })?;
         
+        // Wait for opponent's commitment
         match self.network.receive()? {
             GameMessage::BoardReady { commitment, player_name } => {
                 self.opponent_commitment = commitment;
                 self.opponent_name = player_name.clone();
-                println!("✓ Received commitment from {}", player_name);
+                println!("   Received commitment from {}", player_name);
                 println!("   Opponent Commitment: {:?}", commitment);
             }
             _ => anyhow::bail!("Expected BoardReady message"),
         }
         
-        println!("\n✓ Handshake complete! Game starting...\n");
+        println!("\n Handshake complete! Game starting...\n");
         Ok(())
     }
 
@@ -67,17 +69,17 @@ impl GameCoordinator {
         loop {
             if self.is_my_turn {
                 
-                // ✅ Show both boards ONLY at start of your turn
+                // Show both boards ONLY at start of your turn
                 self.display_boards();
 
                 loop {
                     let hit_result = self.take_turn()?;
 
-                    // ✅ After each shot, show ONLY opponent board
+                    // After each shot, show ONLY opponent board
                     self.display_opponent_board_after_shot(&hit_result);
 
                     if self.opponent_display.ships_remaining() == 0 {
-                        println!("\n*** YOU WIN! All opponent ships destroyed! ***");
+                        println!("\n*** YOU WIN! All opponent ships destroyed! Time to do a lil dance ***");
                         self.network.send(&GameMessage::GameOver {
                             winner: self.player_name.clone(),
                         })?;
@@ -93,7 +95,7 @@ impl GameCoordinator {
                         HitType::Hit => {
                             println!("\nHIT! You get another shot!\n");
                             std::thread::sleep(std::time::Duration::from_secs(2));
-                            // ✅ Keep looping WITHOUT refreshing both boards
+                            // Keep looping WITHOUT refreshing both boards
                         }
                         HitType::Sunk(_) => {
                             println!("\nSHIP SUNK! You get another shot!\n");
@@ -102,7 +104,7 @@ impl GameCoordinator {
                     }
                 }
             } else {
-                // ✅ Opponent turn still shows both boards normally
+                // Opponent turn still shows both boards normally
                 loop {
                     self.display_boards();
                     
@@ -172,8 +174,6 @@ impl GameCoordinator {
         
         println!("\nOPPONENT'S BOARD (Updated):");
         self.opponent_display.display_opponent_board();
-
-        // ✅ NO self-board here — this was the bug
     }
 
     fn display_boards_after_opponent_shot(&self, hit_type: &HitType) {
@@ -214,7 +214,7 @@ impl GameCoordinator {
                 self.verify_shot_proof(position, &hit_type, &proof)?;
                 self.opponent_display.record_shot(position, hit_type.clone());
                 
-                println!("✅ Proof verified!");
+                println!("Proof verified!");
                 
                 Ok(hit_type)
             }
@@ -232,7 +232,7 @@ impl GameCoordinator {
         match self.network.receive()? {
             GameMessage::TakeShot { position } => {
                 println!("Opponent shot at {}", position);
-                println!("🔐 Generating ZK proof of result...");
+                println!("Generating ZK proof of result please await judgement...");
                 
                 let (hit_type, proof) = self.generate_shot_proof(position)?;
                 
@@ -244,7 +244,7 @@ impl GameCoordinator {
                 
                 self.my_display.record_shot(position, hit_type.clone());
                 
-                println!("✅ Proof sent!");
+                println!("Proof sent!");
                 
                 Ok(hit_type)
             }
@@ -256,6 +256,7 @@ impl GameCoordinator {
         }
     }
 
+    // Generate a ZK proof for the result of a shot
     fn generate_shot_proof(&mut self, shot: Position) -> anyhow::Result<(HitType, ProofData)> {
         let input = RoundInput {
             state: self.my_state.clone(),
@@ -292,7 +293,7 @@ impl GameCoordinator {
 ) -> anyhow::Result<()> {
     let receipt = proof.to_receipt()?;
     
-    // Now that we use pre-built binaries, Image IDs will match!
+    //Image IDs will match were using our prebuilt binaries
     receipt.verify(ROUND_ID)?;
     
     let commit: RoundCommit = receipt.journal.decode()?;
@@ -309,7 +310,7 @@ impl GameCoordinator {
     
     self.opponent_commitment = commit.new_state;
     
-    println!("✅ ZK Proof verified! Result is cryptographically proven.");
+    println!("ZK Proof verified! Result is cryptographically proven.");
     Ok(())
 }
 
