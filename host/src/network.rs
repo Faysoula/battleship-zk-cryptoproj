@@ -17,7 +17,7 @@ impl NetworkConnection {
         
         println!("   Waiting for opponent to connect...");
         println!("   Share this info with your opponent:");
-        println!("   - Your IP address (use 'ip addr' or 'ipconfig')");
+        println!("   - Your IP address (use 'sudo tailscale up' if needed)");
         println!("   - Port: {}", port);
         
         let (stream, addr) = listener.accept()?;
@@ -29,7 +29,7 @@ impl NetworkConnection {
 
     /// Client: Connect to a host
     pub fn connect(host: &str, port: u16) -> Result<Self> {
-        println!("🌐 Connecting to {}:{}...", host, port);
+        println!("Connecting to {}:{}...", host, port);
         let stream = TcpStream::connect(format!("{}:{}", host, port))
             .context("Failed to connect to host")?;
         

@@ -140,4 +140,8 @@ impl BoardDisplay {
     pub fn ships_remaining(&self) -> usize {
         ShipClass::list().len() - self.sunk_ships.len()
     }
+    
+    pub fn has_shot(&self, pos: Position) -> bool {
+        self.shots.contains(&pos)
+    }
 }

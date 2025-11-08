@@ -206,10 +206,10 @@ impl GameCoordinator {
         println!("\nFiring at {}...", shot);
         self.network.send(&GameMessage::TakeShot { position: shot })?;
         
-        println!("⏳ Waiting for ZK proof from opponent...");
+        println!("Waiting for ZK proof from opponent...");
         match self.network.receive()? {
             GameMessage::ShotResult { position, hit_type, proof } => {
-                println!("🔐 Verifying ZK proof...");
+                println!("Verifying ZK proof await judgement...");
                 
                 self.verify_shot_proof(position, &hit_type, &proof)?;
                 self.opponent_display.record_shot(position, hit_type.clone());
@@ -232,7 +232,7 @@ impl GameCoordinator {
         match self.network.receive()? {
             GameMessage::TakeShot { position } => {
                 println!("Opponent shot at {}", position);
-                println!("Generating ZK proof of result please await judgement...");
+                println!("Generating ZK proof of result...");
                 
                 let (hit_type, proof) = self.generate_shot_proof(position)?;
                 
@@ -316,35 +316,43 @@ impl GameCoordinator {
 
     fn prompt_shot(&self) -> anyhow::Result<Position> {
         loop {
-            print!("Enter coordinates to fire (x,y): ");
-            io::stdout().flush()?;
-            
-            let mut input = String::new();
-            io::stdin().read_line(&mut input)?;
-            
-            let parts: Vec<&str> = input.trim().split(',').collect();
-            if parts.len() != 2 {
-                println!("Invalid format. Use: x,y");
+        print!("Enter coordinates to fire (x,y): ");
+        io::stdout().flush()?;
+        
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        
+        let parts: Vec<&str> = input.trim().split(',').collect();
+        if parts.len() != 2 {
+            println!("Invalid format. Use: x,y");
+            continue;
+        }
+        
+        let x: u32 = match parts[0].trim().parse() {
+            Ok(v) if v < 10 => v,
+            _ => {
+                println!("X must be 0-9");
                 continue;
             }
-            
-            let x: u32 = match parts[0].trim().parse() {
-                Ok(v) if v < 10 => v,
-                _ => {
-                    println!("X must be 0-9");
-                    continue;
-                }
-            };
-            
-            let y: u32 = match parts[1].trim().parse() {
-                Ok(v) if v < 10 => v,
-                _ => {
-                    println!("Y must be 0-9");
-                    continue;
-                }
-            };
-            
-            return Ok(Position::new(x, y));
+        };
+        
+        let y: u32 = match parts[1].trim().parse() {
+            Ok(v) if v < 10 => v,
+            _ => {
+                println!("Y must be 0-9");
+                continue;
+            }
+        };
+        
+        let position = Position::new(x, y);
+        
+        // Check if this position was already shot
+        if self.opponent_display.has_shot(position) {
+            println!("You already shot at {}! Choose a different position.", position);
+            continue;
         }
+        
+        return Ok(position);
+    }
     }
 }
